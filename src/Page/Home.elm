@@ -1,4 +1,4 @@
-module Page.Home exposing (Model, Msg, init, update, view)
+module Page.Home exposing (Model, Msg, initModel, update, view)
 
 import Html exposing (Html, button, div, text)
 import Html.Events exposing (onClick)
@@ -32,6 +32,6 @@ view model =
         ]
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( "Welcome Home!", Cmd.none )
+initModel : String
+initModel =
+    "Welcome Home!!"

@@ -1,11 +1,41 @@
 module Main exposing (Model, Msg(..), Page(..), init, main, update, view)
 
-import Browser
+import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
 import Html exposing (Html, div, h1, img, text)
-import Html.Attributes exposing (src)
+import Html.Attributes exposing (src, style)
+import Html.Events exposing (onClick)
 import Page.Home as Home
 import Url
+import Url.Builder
+import Url.Parser exposing (Parser, map, oneOf, s, top)
+
+
+
+-- ROUTER
+
+
+type Page
+    = Landing
+    | Home Home.Model
+    | Author
+    | Search
+    | NotFound
+
+
+parser : Parser (Page -> a) a
+parser =
+    oneOf
+        [ map (Home Home.initModel) (s "home")
+        , map Author (s "author")
+        , map Search (s "search")
+        , map Landing top
+        ]
+
+
+fromUrl : Url.Url -> Page
+fromUrl url =
+    Maybe.withDefault NotFound (Url.Parser.parse parser url)
 
 
 
@@ -18,19 +48,9 @@ type alias Model =
     }
 
 
-type Page
-    = Home Home.Model
-    | Author
-    | Search
-
-
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    let
-        ( initHomeModel, _ ) =
-            Home.init
-    in
-    ( { key = key, page = Home initHomeModel }, Cmd.none )
+    ( { key = key, page = fromUrl url }, Cmd.none )
 
 
 
@@ -42,6 +62,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | HomeMsg Home.Msg
+    | NavigateTo String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -49,6 +70,9 @@ update message model =
     case message of
         NoOp ->
             ( model, Cmd.none )
+
+        NavigateTo url ->
+            ( model, Nav.pushUrl model.key url )
 
         LinkClicked urlRequest ->
             case urlRequest of
@@ -63,7 +87,7 @@ update message model =
                     )
 
         UrlChanged url ->
-            ( model, Cmd.none )
+            ( { model | page = fromUrl url }, Cmd.none )
 
         HomeMsg msg ->
             case model.page of
@@ -83,19 +107,49 @@ homeUpdate model ( homeModel, homeCmds ) =
 ---- VIEW ----
 
 
+headerView : Html Msg
+headerView =
+    div
+        [ style "display" "flex"
+        , style "align-items" "center"
+        , style "width" "100%"
+        , style "height" "50px"
+        , style "padding-left" "20px"
+        , style "background-color" "lightgrey"
+        ]
+        [ div
+            [ style "flex" "1"
+            , style "text-align" "left"
+            , style "cursor" "pointer"
+            , onClick <| NavigateTo "/home"
+            ]
+            [ text "Home" ]
+        , div [] []
+        ]
+
+
+pageView : Page -> Html Msg
+pageView page =
+    case page of
+        Home homeModel ->
+            Home.view homeModel |> Html.map HomeMsg
+
+        NotFound ->
+            h1 [] [ text "OH NO, your look lost!" ]
+
+        _ ->
+            div []
+                [ img [ src "/logo.svg" ] []
+                , h1 [] [ text "Your Elm App is working!" ]
+                ]
+
+
 view : Model -> Browser.Document Msg
 view model =
     { title = "My Elm App"
     , body =
-        [ case model.page of
-            Home homeModel ->
-                Home.view homeModel |> Html.map HomeMsg
-
-            _ ->
-                div []
-                    [ img [ src "/logo.svg" ] []
-                    , h1 [] [ text "Your Elm App is working!" ]
-                    ]
+        [ headerView
+        , pageView model.page
         ]
     }
 
