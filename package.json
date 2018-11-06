@@ -1,0 +1,11 @@
+{
+  "name": "demo-elm-app",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "devDependencies": {
+    "prettier": "^1.14.3",
+    "prettier-plugin-elm": "^0.4.1"
+  }
+}
