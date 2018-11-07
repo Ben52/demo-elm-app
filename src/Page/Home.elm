@@ -1,6 +1,7 @@
 module Page.Home exposing (Model, Msg, initModel, update, view)
 
-import Html exposing (Html, button, div, text)
+import Html exposing (Html, button, div, span, text)
+import Html.Attributes exposing (class)
 import Html.Events exposing (onClick)
 
 
@@ -23,12 +24,19 @@ update msg model =
             ( String.repeat 2 model, Cmd.none )
 
 
+buttonClasses : String
+buttonClasses =
+    "bg-blue hover:bg-blue-dark text-white font-bold py-2 px-4 rounded "
+
+
 view : Model -> Html Msg
 view model =
-    div []
+    div [ class "mt-6" ]
         [ div [] [ text model ]
-        , button [ onClick Reverse ] [ text "Reverse!" ]
-        , button [ onClick Repeat ] [ text "Repeat!" ]
+        , div [ class "flex justify-center mt-6" ]
+            [ button [ onClick Reverse, class (buttonClasses ++ "mr-10") ] [ text "Reverse!" ]
+            , button [ onClick Repeat, class buttonClasses ] [ text "Repeat!" ]
+            ]
         ]
 
 

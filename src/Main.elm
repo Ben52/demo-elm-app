@@ -3,7 +3,7 @@ module Main exposing (Model, Msg(..), Page(..), init, main, update, view)
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
 import Html exposing (Html, div, h1, img, text)
-import Html.Attributes exposing (src, style)
+import Html.Attributes exposing (class, src, style)
 import Html.Events exposing (onClick)
 import Page.Home as Home
 import Url
@@ -110,17 +110,9 @@ homeUpdate model ( homeModel, homeCmds ) =
 headerView : Html Msg
 headerView =
     div
-        [ style "display" "flex"
-        , style "align-items" "center"
-        , style "width" "100%"
-        , style "height" "50px"
-        , style "padding-left" "20px"
-        , style "background-color" "lightgrey"
-        ]
+        [ class "flex items-center h-16 bg-grey pl-8" ]
         [ div
-            [ style "flex" "1"
-            , style "text-align" "left"
-            , style "cursor" "pointer"
+            [ class "cursor-pointer"
             , onClick <| NavigateTo "/home"
             ]
             [ text "Home" ]
