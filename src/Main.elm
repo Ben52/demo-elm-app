@@ -6,6 +6,7 @@ import Html exposing (Html, div, h1, img, text)
 import Html.Attributes exposing (class, src, style)
 import Html.Events exposing (onClick)
 import Page.Home as Home
+import Page.Post as Post
 import Url
 import Url.Builder
 import Url.Parser exposing (Parser, map, oneOf, s, top)
@@ -18,6 +19,7 @@ import Url.Parser exposing (Parser, map, oneOf, s, top)
 type Page
     = Landing
     | Home Home.Model
+    | Post
     | Author
     | Search
     | NotFound
@@ -29,6 +31,7 @@ parser =
         [ map (Home Home.initModel) (s "home")
         , map Author (s "author")
         , map Search (s "search")
+        , map Post (s "post")
         , map Landing top
         ]
 
@@ -62,6 +65,7 @@ type Msg
     | LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | HomeMsg Home.Msg
+    | PostMsg Post.Msg
     | NavigateTo String
 
 
@@ -97,10 +101,23 @@ update message model =
                 _ ->
                     ( model, Cmd.none )
 
+        PostMsg msg ->
+            case model.page of
+                Post ->
+                    postUpdate model (Post.update msg { posts = [] })
+
+                _ ->
+                    ( model, Cmd.none )
+
 
 homeUpdate : Model -> ( Home.Model, Cmd Home.Msg ) -> ( Model, Cmd Msg )
 homeUpdate model ( homeModel, homeCmds ) =
     ( { model | page = Home homeModel }, Cmd.map HomeMsg homeCmds )
+
+
+postUpdate : Model -> ( Post.Model, Cmd Post.Msg ) -> ( Model, Cmd Msg )
+postUpdate model ( postModel, postCmds ) =
+    ( { model | page = Post }, Cmd.map PostMsg postCmds )
 
 
 
@@ -116,7 +133,11 @@ headerView =
             , onClick <| NavigateTo "/home"
             ]
             [ text "Home" ]
-        , div [] []
+        , div
+            [ class "cursor-pointer"
+            , onClick <| NavigateTo "/post"
+            ]
+            [ text "Post" ]
         ]
 
 
@@ -126,13 +147,12 @@ pageView page =
         Home homeModel ->
             Home.view homeModel |> Html.map HomeMsg
 
-        NotFound ->
-            h1 [] [ text "OH NO, your look lost!" ]
+        Post ->
+            Post.view { posts = [] } |> Html.map PostMsg
 
         _ ->
-            div []
-                [ img [ src "/logo.svg" ] []
-                , h1 [] [ text "Your Elm App is working!" ]
+            div [ class "text-center" ]
+                [ h1 [] [ text "OH NO, your look lost!" ]
                 ]
 
 
