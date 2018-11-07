@@ -1,4 +1,4 @@
-module Page.Post exposing (Model, Msg, update, view)
+module Page.Post exposing (Model, Msg, init, update, view)
 
 --import Http
 
@@ -25,6 +25,11 @@ type Msg
     | Fetch
 
 
+init : ( Model, Cmd Msg )
+init =
+    ( Model [], send GotResponse queryRequest )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -33,12 +38,8 @@ update msg model =
 
         GotResponse res ->
             case res of
-                Ok data ->
-                    let
-                        l =
-                            Debug.log "data" data
-                    in
-                    ( model, Cmd.none )
+                Ok { publishedPosts } ->
+                    ( { model | posts = publishedPosts }, Cmd.none )
 
                 Err err ->
                     let
@@ -50,9 +51,9 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div []
-        [ button [ onClick Fetch ] [ text "Click me!" ]
-        ]
+    div [] <|
+        button [ onClick Fetch ] [ text "Click me!" ]
+            :: List.map (\post -> div [] [ text post.title ]) model.posts
 
 
 queryRequest : Graphql.Http.Request Response
