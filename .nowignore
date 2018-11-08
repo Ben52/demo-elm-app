@@ -1,0 +1,7 @@
+*
+!now.json
+!elm.json
+!package.json
+!yarn.lock
+!src
+!vendor

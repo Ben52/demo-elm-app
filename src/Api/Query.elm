@@ -2,7 +2,7 @@
 -- https://github.com/dillonkearns/elm-graphql
 
 
-module Api.Query exposing (PostRequiredArguments, PostsByUserRequiredArguments, post, postsByUser, publishedPosts, selection)
+module Api.Query exposing (PostRequiredArguments, PostsByUserRequiredArguments, post, posts, postsByUser, publishedPosts, selection, users)
 
 import Api.InputObject
 import Api.Interface
@@ -25,6 +25,18 @@ functions from `Graphql.Http`.
 selection : (a -> constructor) -> SelectionSet (a -> constructor) RootQuery
 selection constructor =
     Object.selection constructor
+
+
+{-| -}
+posts : SelectionSet decodesTo Api.Object.Post -> Field (List decodesTo) RootQuery
+posts object_ =
+    Object.selectionField "posts" [] object_ (identity >> Decode.list)
+
+
+{-| -}
+users : SelectionSet decodesTo Api.Object.User -> Field (List decodesTo) RootQuery
+users object_ =
+    Object.selectionField "users" [] object_ (identity >> Decode.list)
 
 
 {-| -}

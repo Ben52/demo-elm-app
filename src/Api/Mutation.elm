@@ -51,9 +51,9 @@ type alias CreateDraftRequiredArguments =
   - userId -
 
 -}
-createDraft : CreateDraftRequiredArguments -> SelectionSet decodesTo Api.Object.Post -> Field (Maybe decodesTo) RootMutation
+createDraft : CreateDraftRequiredArguments -> SelectionSet decodesTo Api.Object.Post -> Field decodesTo RootMutation
 createDraft requiredArgs object_ =
-    Object.selectionField "createDraft" [ Argument.required "title" requiredArgs.title Encode.string, Argument.required "userId" requiredArgs.userId (\(Api.Scalar.Id raw) -> Encode.string raw) ] object_ (identity >> Decode.nullable)
+    Object.selectionField "createDraft" [ Argument.required "title" requiredArgs.title Encode.string, Argument.required "userId" requiredArgs.userId (\(Api.Scalar.Id raw) -> Encode.string raw) ] object_ identity
 
 
 type alias PublishRequiredArguments =
