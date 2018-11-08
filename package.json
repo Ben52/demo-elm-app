@@ -6,15 +6,12 @@
   "private": true,
   "scripts": {
     "api": "elm-graphql http://localhost:4000",
-    "dev": "serve build/index.html"
+    "deploy": "rm -rf build && elm-app build && cp now.json build && cd build && now"
   },
   "devDependencies": {
     "@dillonkearns/elm-graphql": "^1.0.7",
     "micro-dev": "^3.0.0",
     "prettier": "^1.14.3",
     "prettier-plugin-elm": "^0.4.1"
-  },
-  "dependencies": {
-    "micro": "^9.3.3"
   }
 }
