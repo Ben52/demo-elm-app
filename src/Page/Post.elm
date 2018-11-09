@@ -11,9 +11,10 @@ import Graphql.Field exposing (Field(..))
 import Graphql.Http exposing (Error, send)
 import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.SelectionSet exposing (SelectionSet(..), with)
-import Html exposing (Html, button, div, input, text)
+import Html exposing (Attribute, Html, button, div, input, text)
 import Html.Attributes exposing (class, classList, value)
-import Html.Events exposing (onClick, onInput)
+import Html.Events exposing (keyCode, on, onClick, onInput)
+import Json.Decode
 import Url exposing (Protocol(..))
 
 
@@ -106,6 +107,21 @@ inputClasses =
     "shadow appearance-none border rounded w-full py-2 px-3 text-grey-darker leading-tight focus:outline-none focus:shadow-outline"
 
 
+onEnter : msg -> Attribute msg
+onEnter onEnterAction =
+    on "keyup" <|
+        Json.Decode.andThen
+            (\keyCode ->
+                case keyCode of
+                    13 ->
+                        Json.Decode.succeed onEnterAction
+
+                    _ ->
+                        Json.Decode.fail (String.fromInt keyCode)
+            )
+            keyCode
+
+
 view : Model -> Html Msg
 view model =
     div [] <|
@@ -115,6 +131,7 @@ view model =
                     [ div []
                         [ input
                             [ onInput NewPostTitleUpdated
+                            , onEnter NewPost
                             , value model.newPostTitle
                             , class inputClasses
                             ]
