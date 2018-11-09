@@ -16,11 +16,13 @@ import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode
 import Url exposing (Protocol(..))
+import Utils
 
 
 type alias Model =
     { posts : List Post
     , newPostTitle : String
+    , submitting : Bool
     }
 
 
@@ -29,6 +31,7 @@ type Msg
     | Fetch
     | NewPostTitleUpdated String
     | NewPost
+    | Noop
 
 
 type Id
@@ -60,17 +63,20 @@ titleString (Title title) =
 
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "", send GotResponse postsRequest )
+    ( Model [] "" False, send GotResponse postsRequest )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
+        Noop ->
+            ( model, Cmd.none )
+
         NewPostTitleUpdated title ->
             ( { model | newPostTitle = title }, Cmd.none )
 
         NewPost ->
-            ( model
+            ( { model | submitting = True }
             , send GotResponse (mutationRequest (newPostMutation (Title model.newPostTitle)))
             )
 
@@ -86,10 +92,10 @@ update msg model =
                     ( { model | posts = post :: model.posts }, Cmd.none )
 
                 Ok (NewPostRes post) ->
-                    ( { model | posts = model.posts ++ [ post ], newPostTitle = "" }, Cmd.none )
+                    ( { model | submitting = False, posts = model.posts ++ [ post ], newPostTitle = "" }, Cmd.none )
 
                 Err err ->
-                    ( model, Cmd.none )
+                    ( { model | submitting = False }, Cmd.none )
 
 
 buttonClasses : String
@@ -131,13 +137,13 @@ view model =
                     [ div []
                         [ input
                             [ onInput NewPostTitleUpdated
-                            , onEnter NewPost
+                            , onEnter (Utils.ternary Noop NewPost model.submitting)
                             , value model.newPostTitle
                             , class inputClasses
                             ]
                             []
                         , button
-                            [ onClick NewPost
+                            [ onClick (Utils.ternary Noop NewPost model.submitting)
                             , class (buttonClasses ++ "mt-6")
                             , classList [ ( disabledButtonClasses, String.isEmpty model.newPostTitle ) ]
                             ]
