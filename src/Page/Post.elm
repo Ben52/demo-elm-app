@@ -1,4 +1,4 @@
-module Page.Post exposing (Model, Msg, init, update, view, initModel)
+module Page.Post exposing (Model, Msg, init, initModel, update, view)
 
 --import Http
 
@@ -15,6 +15,7 @@ import Html exposing (Attribute, Html, button, div, input, text)
 import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode
+import Octicons
 import Url exposing (Protocol(..))
 import Utils
 
@@ -60,9 +61,11 @@ titleString : Title -> String
 titleString (Title title) =
     title
 
-initModel: Model
+
+initModel : Model
 initModel =
     Model [] "" False
+
 
 init : ( Model, Cmd Msg )
 init =
@@ -131,11 +134,24 @@ onEnter onEnterAction =
             keyCode
 
 
+viewTrashCanIcon : Html Msg
+viewTrashCanIcon =
+    Html.i [] [ Octicons.trashcan (Octicons.defaultOptions |> Octicons.color "orange" |> Octicons.class "cursor-pointer") ]
+
+
+viewPost : Post -> Html Msg
+viewPost post =
+    div [ class "flex justify-center" ]
+        [ div [ class "mr-4" ] [ text <| titleString post.title ]
+        , viewTrashCanIcon
+        ]
+
+
 view : Model -> Html Msg
 view model =
     div [] <|
         [ button [ onClick Fetch ] [ text "Click me!" ] ]
-            ++ List.map (\post -> div [] [ text <| titleString post.title ]) model.posts
+            ++ List.map viewPost model.posts
             ++ [ div [ class "flex justify-center" ]
                     [ div []
                         [ input
