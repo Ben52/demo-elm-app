@@ -1,4 +1,4 @@
-module Main exposing (Model, Msg(..), Page(..), init, main, update, view)
+module Main exposing (Model, Msg(..), Route(..), init, main, update, view)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
@@ -16,29 +16,29 @@ import Url.Parser exposing (Parser, map, oneOf, s, top)
 -- ROUTER
 
 
-type Page
+type Route
     = Landing
     | Home Home.Model
-    | Post ( Post.Model, Cmd Post.Msg )
+    | Post Post.Model -- ( Post.Model, Cmd Post.Msg )
     | Author
     | Search
     | NotFound
 
 
-parser : Parser (Page -> a) a
-parser =
+routeParser : Parser (Route -> Route) Route
+routeParser =
     oneOf
         [ map (Home Home.initModel) (s "home")
         , map Author (s "author")
         , map Search (s "search")
-        , map (Post Post.init) (s "post")
+        , map (Post Post.initModel) (s "post")
         , map Landing top
         ]
 
 
-fromUrl : Url.Url -> Page
+fromUrl : Url.Url -> Route
 fromUrl url =
-    Maybe.withDefault NotFound (Url.Parser.parse parser url)
+    Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
 
 
 
@@ -47,13 +47,13 @@ fromUrl url =
 
 type alias Model =
     { key : Nav.Key
-    , page : Page
+    , page : Route
     }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    initNewPage { key = key, page = fromUrl url } url
+    ( { key = key, page = fromUrl url }, Cmd.none )
 
 
 
@@ -67,16 +67,6 @@ type Msg
     | HomeMsg Home.Msg
     | PostMsg Post.Msg
     | NavigateTo String
-
-
-initNewPage : Model -> Url.Url -> ( Model, Cmd Msg )
-initNewPage model url =
-    case fromUrl url of
-        Post ( postModel, postCmd ) ->
-            postUpdate model ( postModel, postCmd )
-
-        _ ->
-            ( { model | page = fromUrl url }, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -101,7 +91,7 @@ update message model =
                     )
 
         UrlChanged url ->
-            initNewPage model url
+            ( { model | page = fromUrl url }, Cmd.none )
 
         HomeMsg msg ->
             case model.page of
@@ -113,7 +103,7 @@ update message model =
 
         PostMsg msg ->
             case model.page of
-                Post ( postModel, postCmd ) ->
+                Post postModel ->
                     postUpdate model (Post.update msg postModel)
 
                 _ ->
@@ -127,7 +117,7 @@ homeUpdate model ( homeModel, homeCmds ) =
 
 postUpdate : Model -> ( Post.Model, Cmd Post.Msg ) -> ( Model, Cmd Msg )
 postUpdate model ( postModel, postCmds ) =
-    ( { model | page = Post ( postModel, postCmds ) }, Cmd.map PostMsg postCmds )
+    ( { model | page = Post postModel }, Cmd.map PostMsg postCmds )
 
 
 
@@ -139,7 +129,7 @@ headerView =
     div
         [ class "flex items-center h-16 bg-grey pl-8" ]
         [ div
-            [ class "cursor-pointer"
+            [ class "cursor-pointer mr-8"
             , onClick <| NavigateTo "/home"
             ]
             [ text "Home" ]
@@ -147,17 +137,17 @@ headerView =
             [ class "cursor-pointer"
             , onClick <| NavigateTo "/post"
             ]
-            [ text "Post" ]
+            [ text "Posts" ]
         ]
 
 
-pageView : Page -> Html Msg
+pageView : Route -> Html Msg
 pageView page =
     case page of
         Home homeModel ->
             Home.view homeModel |> Html.map HomeMsg
 
-        Post ( postModel, postCmd ) ->
+        Post postModel ->
             Post.view postModel |> Html.map PostMsg
 
         _ ->

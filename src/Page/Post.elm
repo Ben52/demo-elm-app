@@ -1,4 +1,4 @@
-module Page.Post exposing (Model, Msg, init, update, view)
+module Page.Post exposing (Model, Msg, init, update, view, initModel)
 
 --import Http
 
@@ -60,6 +60,9 @@ titleString : Title -> String
 titleString (Title title) =
     title
 
+initModel: Model
+initModel =
+    Model [] "" False
 
 init : ( Model, Cmd Msg )
 init =
