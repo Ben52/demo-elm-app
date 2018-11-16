@@ -136,7 +136,7 @@ onEnter onEnterAction =
 
 viewTrashCanIcon : Html Msg
 viewTrashCanIcon =
-    Html.i [] [ Octicons.trashcan (Octicons.defaultOptions |> Octicons.color "orange" |> Octicons.class "cursor-pointer") ]
+    Html.i [] [ Octicons.trashcan (Octicons.defaultOptions |> Octicons.color "red" |> Octicons.class "cursor-pointer") ]
 
 
 viewPost : Post -> Html Msg
