@@ -1,4 +1,4 @@
-module Page.Post exposing (Model, Msg, init, initModel, update, view)
+module Page.Post exposing (Model, Msg, initCmd, initModel, update, view)
 
 --import Http
 
@@ -67,9 +67,14 @@ initModel =
     Model [] "" False
 
 
+initCmd : Cmd Msg
+initCmd =
+    send GotResponse <| withCredentials postsRequest
+
+
 init : ( Model, Cmd Msg )
 init =
-    ( Model [] "" False, send GotResponse postsRequest )
+    ( initModel, initCmd )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

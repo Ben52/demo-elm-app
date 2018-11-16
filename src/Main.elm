@@ -19,7 +19,7 @@ import Url.Parser exposing (Parser, map, oneOf, s, top)
 type Route
     = Landing
     | Home Home.Model
-    | Post Post.Model -- ( Post.Model, Cmd Post.Msg )
+    | Post Post.Model
     | Author
     | Search
     | NotFound
@@ -41,6 +41,16 @@ fromUrl url =
     Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
 
 
+routeInitialCmd : Route -> Cmd Msg
+routeInitialCmd route =
+    case route of
+        Post _ ->
+            Cmd.map PostMsg Post.initCmd
+
+        _ ->
+            Cmd.none
+
+
 
 ---- MODEL ----
 
@@ -53,7 +63,11 @@ type alias Model =
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    ( { key = key, page = fromUrl url }, Cmd.none )
+    let
+        route =
+            fromUrl url
+    in
+    ( { key = key, page = route }, routeInitialCmd route )
 
 
 
@@ -91,7 +105,11 @@ update message model =
                     )
 
         UrlChanged url ->
-            ( { model | page = fromUrl url }, Cmd.none )
+            let
+                route =
+                    fromUrl url
+            in
+            ( { model | page = route }, routeInitialCmd route )
 
         HomeMsg msg ->
             case model.page of
