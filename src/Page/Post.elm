@@ -8,7 +8,7 @@ import Api.Object.Post
 import Api.Query
 import Api.Scalar
 import Graphql.Field exposing (Field(..))
-import Graphql.Http exposing (Error, send)
+import Graphql.Http exposing (Error, send, withCredentials)
 import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.SelectionSet exposing (SelectionSet(..), with)
 import Html exposing (Attribute, Html, button, div, input, text)
@@ -83,11 +83,11 @@ update msg model =
 
         NewPost ->
             ( { model | submitting = True }
-            , send GotResponse (mutationRequest (newPostMutation (Title model.newPostTitle)))
+            , send GotResponse <| withCredentials (mutationRequest (newPostMutation (Title model.newPostTitle)))
             )
 
         Fetch ->
-            ( model, send GotResponse postsRequest )
+            ( model, send GotResponse (withCredentials postsRequest) )
 
         GotResponse res ->
             case res of
