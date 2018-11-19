@@ -17,8 +17,7 @@ import Url.Parser exposing (Parser, map, oneOf, s, top)
 
 
 type Route
-    = Landing
-    | Home Home.Model
+    = Home Home.Model
     | Post Post.Model
     | Author
     | Search
@@ -29,10 +28,10 @@ routeParser : Parser (Route -> Route) Route
 routeParser =
     oneOf
         [ map (Home Home.initModel) (s "home")
+        , map (Home Home.initModel) top
         , map Author (s "author")
         , map Search (s "search")
         , map (Post Post.initModel) (s "post")
-        , map Landing top
         ]
 
 
