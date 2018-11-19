@@ -112,8 +112,8 @@ update msg model =
                 Ok (NewPostRes post) ->
                     ( { model | submitting = False, posts = model.posts ++ [ post ], newPostTitle = "" }, Cmd.none )
 
-                Ok (PostDeleted post) ->
-                    ( { model | posts = List.filter ((/=) post.id << .id) model.posts }, Cmd.none )
+                Ok (PostDeleted { id }) ->
+                    ( { model | posts = List.filter ((/=) id << .id) model.posts }, Cmd.none )
 
                 Err err ->
                     ( { model | submitting = False }, Cmd.none )
