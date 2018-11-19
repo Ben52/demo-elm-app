@@ -11,7 +11,7 @@ import Graphql.Field exposing (Field(..))
 import Graphql.Http exposing (Error, send, withCredentials)
 import Graphql.Operation exposing (RootMutation, RootQuery)
 import Graphql.SelectionSet exposing (SelectionSet(..), with)
-import Html exposing (Attribute, Html, button, div, input, text)
+import Html exposing (Attribute, Html, button, div, input, span, text)
 import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode
@@ -32,6 +32,7 @@ type Msg
     | Fetch
     | NewPostTitleUpdated String
     | NewPost
+    | DeletePost Id
     | Noop
 
 
@@ -55,6 +56,7 @@ type Response
     = Posts (List Post)
     | PostRes Post
     | NewPostRes Post
+    | PostDeleted Post
 
 
 titleString : Title -> String
@@ -91,6 +93,11 @@ update msg model =
             , send GotResponse <| withCredentials (mutationRequest (newPostMutation (Title model.newPostTitle)))
             )
 
+        DeletePost id ->
+            ( model
+            , send GotResponse <| withCredentials (mutationRequest (deletePostMutation id))
+            )
+
         Fetch ->
             ( model, send GotResponse (withCredentials postsRequest) )
 
@@ -104,6 +111,9 @@ update msg model =
 
                 Ok (NewPostRes post) ->
                     ( { model | submitting = False, posts = model.posts ++ [ post ], newPostTitle = "" }, Cmd.none )
+
+                Ok (PostDeleted post) ->
+                    ( { model | posts = List.filter (\p -> p.id /= post.id) model.posts }, Cmd.none )
 
                 Err err ->
                     ( { model | submitting = False }, Cmd.none )
@@ -148,7 +158,7 @@ viewPost : Post -> Html Msg
 viewPost post =
     div [ class "flex justify-center" ]
         [ div [ class "mr-4" ] [ text <| titleString post.title ]
-        , viewTrashCanIcon
+        , span [ onClick (DeletePost post.id) ] [ viewTrashCanIcon ]
         ]
 
 
@@ -179,7 +189,7 @@ view model =
 
 graphqlEndpoint : String
 graphqlEndpoint =
-    "https://hello-prisma-dqqaqnyrru.now.sh"
+    "https://hello-prisma.now.sh "
 
 
 postsRequest : Graphql.Http.Request Response
@@ -214,6 +224,12 @@ newPostMutation : Title -> SelectionSet Response RootMutation
 newPostMutation title =
     Api.Mutation.selection NewPostRes
         |> with (Api.Mutation.createDraft (newPostArgs title) postSelection)
+
+
+deletePostMutation : Id -> SelectionSet Response RootMutation
+deletePostMutation (Id id) =
+    Api.Mutation.selection PostDeleted
+        |> with (Api.Mutation.deletePost { id = Api.Scalar.Id id } postSelection)
 
 
 postsQuery : SelectionSet Response RootQuery

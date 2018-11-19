@@ -1,7 +1,6 @@
-*
-!now.json
-!elm.json
-!package.json
-!yarn.lock
-!src
-!vendor
+node_modules
+build
+dist
+elm-stuff
+.idea
+tests

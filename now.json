@@ -1,7 +1,11 @@
 {
   "version": 2,
+  "public": true,
+  "alias": "demo-elm-app",
+  "builds": [{ "src": "package.json", "use": "@now/static-build" }],
   "routes": [
-    {"src": "/static/(.*)", "dest": "/static/$1"},
-    {"src": "/(.*)", "dest": "/index.html"}
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/favicon.ico" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 }
