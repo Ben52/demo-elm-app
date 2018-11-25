@@ -15,8 +15,9 @@ import Html exposing (Attribute, Html, button, div, input, span, text)
 import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode
+import Keyboard
+import Keyboard.Events
 import Octicons
-import Url exposing (Protocol(..))
 import Utils
 
 
@@ -134,21 +135,6 @@ inputClasses =
     "shadow appearance-none border rounded w-full py-2 px-3 text-grey-darker leading-tight focus:outline-none focus:shadow-outline"
 
 
-onEnter : msg -> Attribute msg
-onEnter onEnterAction =
-    on "keyup" <|
-        Json.Decode.andThen
-            (\keyCode ->
-                case keyCode of
-                    13 ->
-                        Json.Decode.succeed onEnterAction
-
-                    _ ->
-                        Json.Decode.fail (String.fromInt keyCode)
-            )
-            keyCode
-
-
 viewTrashCanIcon : Html Msg
 viewTrashCanIcon =
     Html.i [] [ Octicons.trashcan (Octicons.defaultOptions |> Octicons.color "red" |> Octicons.class "cursor-pointer") ]
@@ -171,7 +157,7 @@ view model =
                     [ div []
                         [ input
                             [ onInput NewPostTitleUpdated
-                            , onEnter (Utils.ternary Noop NewPost model.submitting)
+                            , Keyboard.Events.onKeyDown [ ( Keyboard.Enter, Utils.ternary Noop NewPost model.submitting ) ]
                             , value model.newPostTitle
                             , class inputClasses
                             ]

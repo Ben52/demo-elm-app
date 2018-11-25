@@ -6,6 +6,7 @@
     "elm-version": "0.19.0",
     "dependencies": {
         "direct": {
+            "Skinney/keyboard-events": "1.0.0",
             "capitalist/elm-octicons": "2.2.1",
             "dillonkearns/elm-graphql": "1.4.0",
             "elm/browser": "1.0.1",
@@ -14,7 +15,8 @@
             "elm/http": "2.0.0",
             "elm/json": "1.1.1",
             "elm/url": "1.0.0",
-            "elm-community/list-extra": "8.1.0"
+            "elm-community/list-extra": "8.1.0",
+            "ohanhi/keyboard": "1.0.0"
         },
         "indirect": {
             "Skinney/murmur3": "2.0.8",
