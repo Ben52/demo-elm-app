@@ -1,4 +1,4 @@
-module Page.Home exposing (Model, Msg, initModel, update, view)
+module Page.Home exposing (Model, Msg, init, update, view)
 
 import Html exposing (Html, button, div, span, text)
 import Html.Attributes exposing (class)
@@ -12,6 +12,11 @@ type alias Model =
 type Msg
     = Reverse
     | Repeat
+
+
+init : ( Model, Cmd Msg )
+init =
+    ( initModel, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )

@@ -1,4 +1,4 @@
-module Main exposing (Model, Msg(..), Route(..), init, main, update, view)
+module Main exposing (Model, Msg(..), init, main, update, view)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
@@ -7,47 +7,21 @@ import Html.Attributes exposing (class, src, style)
 import Html.Events exposing (onClick)
 import Page.Home as Home
 import Page.Post as Post
+import Route exposing (Route)
 import Url
-import Url.Builder
-import Url.Parser exposing (Parser, map, oneOf, s, top)
 
 
 
 -- ROUTER
 
 
-type Route
+type Page
     = Home Home.Model
     | Post Post.Model
     | Author ()
     | Search ()
     | NotFound ()
-
-
-routeParser : Parser (Route -> Route) Route
-routeParser =
-    oneOf
-        [ map (Home Home.initModel) (s "home")
-        , map (Home Home.initModel) top
-        , map (Author ()) (s "author")
-        , map (Search ()) (s "search")
-        , map (Post Post.initModel) (s "post")
-        ]
-
-
-fromUrl : Url.Url -> Route
-fromUrl url =
-    Maybe.withDefault (NotFound ()) (Url.Parser.parse routeParser url)
-
-
-routeInitialCmd : Route -> Cmd Msg
-routeInitialCmd route =
-    case route of
-        Post _ ->
-            Cmd.map PostMsg Post.initCmd
-
-        _ ->
-            Cmd.none
+    | Blank
 
 
 
@@ -56,17 +30,13 @@ routeInitialCmd route =
 
 type alias Model =
     { key : Nav.Key
-    , page : Route
+    , page : Page
     }
 
 
 init : () -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
 init _ url key =
-    let
-        route =
-            fromUrl url
-    in
-    ( { key = key, page = route }, routeInitialCmd route )
+    changeRouteTo (Route.fromUrl url) { key = key, page = Blank }
 
 
 
@@ -74,8 +44,7 @@ init _ url key =
 
 
 type Msg
-    = NoOp
-    | LinkClicked Browser.UrlRequest
+    = LinkClicked Browser.UrlRequest
     | UrlChanged Url.Url
     | HomeMsg Home.Msg
     | PostMsg Post.Msg
@@ -84,10 +53,7 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    case ( Debug.log "message" message, Debug.log "page" model.page ) of
-        ( NoOp, _ ) ->
-            ( model, Cmd.none )
-
+    case ( message, model.page ) of
         ( NavigateTo url, _ ) ->
             ( model, Nav.pushUrl model.key url )
 
@@ -104,7 +70,7 @@ update message model =
                     )
 
         ( UrlChanged url, _ ) ->
-            ( { model | page = fromUrl url }, routeInitialCmd (fromUrl url) )
+            changeRouteTo (Route.fromUrl url) model
 
         ( HomeMsg subMsg, Home homeModel ) ->
             Home.update subMsg homeModel
@@ -118,9 +84,24 @@ update message model =
             ( model, Cmd.none )
 
 
-updateWith : (subModel -> Route) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toRoute toMsg model ( subModel, subCmd ) =
-    ( { model | page = toRoute subModel }, Cmd.map toMsg subCmd )
+updateWith : (subModel -> Page) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toPage toMsg model ( subModel, subCmd ) =
+    ( { model | page = toPage subModel }, Cmd.map toMsg subCmd )
+
+
+changeRouteTo : Route -> Model -> ( Model, Cmd Msg )
+changeRouteTo route model =
+    case route of
+        Route.Post ->
+            Post.init
+                |> updateWith Post PostMsg model
+
+        Route.Home ->
+            Home.init
+                |> updateWith Home HomeMsg model
+
+        Route.NotFound ->
+            ( model, Cmd.none )
 
 
 
@@ -144,7 +125,7 @@ headerView =
         ]
 
 
-pageView : Route -> Html Msg
+pageView : Page -> Html Msg
 pageView page =
     case page of
         Home homeModel ->

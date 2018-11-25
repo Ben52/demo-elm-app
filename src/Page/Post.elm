@@ -1,4 +1,4 @@
-module Page.Post exposing (Model, Msg, initCmd, initModel, update, view)
+module Page.Post exposing (Model, Msg, init, update, view)
 
 --import Http
 
