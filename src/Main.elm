@@ -19,9 +19,9 @@ import Url.Parser exposing (Parser, map, oneOf, s, top)
 type Route
     = Home Home.Model
     | Post Post.Model
-    | Author
-    | Search
-    | NotFound
+    | Author ()
+    | Search ()
+    | NotFound ()
 
 
 routeParser : Parser (Route -> Route) Route
@@ -29,15 +29,15 @@ routeParser =
     oneOf
         [ map (Home Home.initModel) (s "home")
         , map (Home Home.initModel) top
-        , map Author (s "author")
-        , map Search (s "search")
+        , map (Author ()) (s "author")
+        , map (Search ()) (s "search")
         , map (Post Post.initModel) (s "post")
         ]
 
 
 fromUrl : Url.Url -> Route
 fromUrl url =
-    Maybe.withDefault NotFound (Url.Parser.parse routeParser url)
+    Maybe.withDefault (NotFound ()) (Url.Parser.parse routeParser url)
 
 
 routeInitialCmd : Route -> Cmd Msg
@@ -84,14 +84,14 @@ type Msg
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update message model =
-    case message of
-        NoOp ->
+    case ( Debug.log "message" message, Debug.log "page" model.page ) of
+        ( NoOp, _ ) ->
             ( model, Cmd.none )
 
-        NavigateTo url ->
+        ( NavigateTo url, _ ) ->
             ( model, Nav.pushUrl model.key url )
 
-        LinkClicked urlRequest ->
+        ( LinkClicked urlRequest, _ ) ->
             case urlRequest of
                 Browser.Internal url ->
                     ( model
@@ -103,38 +103,24 @@ update message model =
                     , Nav.load href
                     )
 
-        UrlChanged url ->
-            let
-                route =
-                    fromUrl url
-            in
-            ( { model | page = route }, routeInitialCmd route )
+        ( UrlChanged url, _ ) ->
+            ( { model | page = fromUrl url }, routeInitialCmd (fromUrl url) )
 
-        HomeMsg msg ->
-            case model.page of
-                Home homeModel ->
-                    homeUpdate model (Home.update msg homeModel)
+        ( HomeMsg subMsg, Home homeModel ) ->
+            Home.update subMsg homeModel
+                |> updateWith Home HomeMsg model
 
-                _ ->
-                    ( model, Cmd.none )
+        ( PostMsg subMsg, Post subModel ) ->
+            Post.update subMsg subModel
+                |> updateWith Post PostMsg model
 
-        PostMsg msg ->
-            case model.page of
-                Post postModel ->
-                    postUpdate model (Post.update msg postModel)
-
-                _ ->
-                    ( model, Cmd.none )
+        ( _, _ ) ->
+            ( model, Cmd.none )
 
 
-homeUpdate : Model -> ( Home.Model, Cmd Home.Msg ) -> ( Model, Cmd Msg )
-homeUpdate model ( homeModel, homeCmds ) =
-    ( { model | page = Home homeModel }, Cmd.map HomeMsg homeCmds )
-
-
-postUpdate : Model -> ( Post.Model, Cmd Post.Msg ) -> ( Model, Cmd Msg )
-postUpdate model ( postModel, postCmds ) =
-    ( { model | page = Post postModel }, Cmd.map PostMsg postCmds )
+updateWith : (subModel -> Route) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toRoute toMsg model ( subModel, subCmd ) =
+    ( { model | page = toRoute subModel }, Cmd.map toMsg subCmd )
 
 
 
