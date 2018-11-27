@@ -18,9 +18,7 @@ import Url
 type Page
     = Home Home.Model
     | Post Post.Model
-    | Author ()
-    | Search ()
-    | NotFound ()
+    | NotFound
     | Blank
 
 
@@ -136,7 +134,7 @@ pageView page =
 
         _ ->
             div [ class "text-center" ]
-                [ h1 [] [ text "OH NO, your look lost!" ]
+                [ h1 [] [ text "404 NOT FOUND!" ]
                 ]
 
 

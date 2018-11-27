@@ -2,7 +2,7 @@ module Route exposing (Route(..), fromUrl)
 
 import Browser.Navigation as Nav
 import Url exposing (Url)
-import Url.Parser as Parser exposing (Parser, s)
+import Url.Parser as Parser exposing (Parser, s, int, (</>))
 
 
 type Route
