@@ -19,6 +19,7 @@ import Keyboard
 import Keyboard.Events
 import Octicons
 import Utils
+import Validate exposing (Valid, Validator)
 
 
 type alias Model =
@@ -65,6 +66,16 @@ titleString (Title title) =
     title
 
 
+titleIsValid : Title -> Bool
+titleIsValid title =
+    case Validate.validate titleValidator title of
+        Ok _ ->
+            True
+
+        Err _ ->
+            False
+
+
 initModel : Model
 initModel =
     Model [] "" False
@@ -90,9 +101,14 @@ update msg model =
             ( { model | newPostTitle = title }, Cmd.none )
 
         NewPost ->
-            ( { model | submitting = True }
-            , send GotResponse <| withCredentials (mutationRequest (newPostMutation (Title model.newPostTitle)))
-            )
+            case Validate.validate titleValidator <| Title model.newPostTitle of
+                Ok validTitle ->
+                    ( { model | submitting = True }
+                    , send GotResponse <| withCredentials (mutationRequest (newPostMutation validTitle))
+                    )
+
+                Err errors ->
+                    ( model, Cmd.none )
 
         DeletePost id ->
             ( model
@@ -165,7 +181,7 @@ view model =
                         , button
                             [ onClick (Utils.ternary Noop NewPost model.submitting)
                             , class (buttonClasses ++ "mt-6")
-                            , classList [ ( disabledButtonClasses, String.isEmpty model.newPostTitle ) ]
+                            , classList [ ( disabledButtonClasses, Title model.newPostTitle |> titleIsValid |> not ) ]
                             ]
                             [ text "Submit" ]
                         ]
@@ -201,15 +217,20 @@ mutationRequest mutation =
     Graphql.Http.mutationRequest graphqlEndpoint mutation
 
 
-newPostArgs : Title -> Api.Mutation.CreateDraftRequiredArguments
-newPostArgs title =
-    { title = titleString title, userId = Api.Scalar.Id "cjo7vfgvj4pdr0a017iv8k1sy" }
+titleValidator : Validator String Title
+titleValidator =
+    Validate.ifBlank titleString "Please enter a title"
 
 
-newPostMutation : Title -> SelectionSet Response RootMutation
+newPostMutation : Valid Title -> SelectionSet Response RootMutation
 newPostMutation title =
     Api.Mutation.selection NewPostRes
         |> with (Api.Mutation.createDraft (newPostArgs title) postSelection)
+
+
+newPostArgs : Valid Title -> Api.Mutation.CreateDraftRequiredArguments
+newPostArgs title =
+    { title = titleString <| Validate.fromValid title, userId = Api.Scalar.Id "cjo7vfgvj4pdr0a017iv8k1sy" }
 
 
 deletePostMutation : Id -> SelectionSet Response RootMutation

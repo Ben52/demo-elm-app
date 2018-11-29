@@ -16,7 +16,8 @@
             "elm/json": "1.1.1",
             "elm/url": "1.0.0",
             "elm-community/list-extra": "8.1.0",
-            "ohanhi/keyboard": "1.0.0"
+            "ohanhi/keyboard": "1.0.0",
+            "rtfeldman/elm-validate": "4.0.1"
         },
         "indirect": {
             "Skinney/murmur3": "2.0.8",
