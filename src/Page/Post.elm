@@ -65,6 +65,10 @@ titleString : Title -> String
 titleString (Title title) =
     title
 
+titleValidator : Validator String Title
+titleValidator =
+    Validate.ifBlank titleString "Please enter a title"
+
 
 titleIsValid : Title -> Bool
 titleIsValid title =
@@ -83,7 +87,7 @@ initModel =
 
 initCmd : Cmd Msg
 initCmd =
-    send GotResponse <| withCredentials postsRequest
+    sendQuery postsQuery
 
 
 init : ( Model, Cmd Msg )
@@ -104,7 +108,7 @@ update msg model =
             case Validate.validate titleValidator <| Title model.newPostTitle of
                 Ok validTitle ->
                     ( { model | submitting = True }
-                    , send GotResponse <| withCredentials (mutationRequest (newPostMutation validTitle))
+                    , sendMutation (newPostMutation validTitle)
                     )
 
                 Err errors ->
@@ -112,11 +116,11 @@ update msg model =
 
         DeletePost id ->
             ( model
-            , send GotResponse <| withCredentials (mutationRequest (deletePostMutation id))
+            , sendMutation (deletePostMutation id)
             )
 
         Fetch ->
-            ( model, send GotResponse (withCredentials postsRequest) )
+            ( model, sendQuery postsQuery )
 
         GotResponse res ->
             case res of
@@ -189,37 +193,34 @@ view model =
                ]
 
 
+
+-- GRAPHQL API
+
+
 graphqlEndpoint : String
 graphqlEndpoint =
-    "https://hello-prisma.now.sh "
+    "https://hello-prisma.now.sh"
 
 
-postsRequest : Graphql.Http.Request Response
-postsRequest =
-    queryRequest postsQuery
-
-
-
--- GENERIC QUERY REQUEST
-
-
-queryRequest : SelectionSet decodesTo RootQuery -> Graphql.Http.Request decodesTo
-queryRequest =
-    Graphql.Http.queryRequest graphqlEndpoint
+sendQuery : SelectionSet Response RootQuery -> Cmd Msg
+sendQuery query =
+    query
+        |> Graphql.Http.queryRequest graphqlEndpoint
+        |> withCredentials
+        |> Graphql.Http.send GotResponse
 
 
 
--- GENERIC MUTATION REQUEST
+-- With remote data, it's as below
+-- |> Graphql.Http.send (RemoteData.fromResult >> GotResponse)
 
 
-mutationRequest : SelectionSet decodesTo RootMutation -> Graphql.Http.Request decodesTo
-mutationRequest mutation =
-    Graphql.Http.mutationRequest graphqlEndpoint mutation
-
-
-titleValidator : Validator String Title
-titleValidator =
-    Validate.ifBlank titleString "Please enter a title"
+sendMutation : SelectionSet Response RootMutation -> Cmd Msg
+sendMutation mutation =
+    mutation
+        |> Graphql.Http.mutationRequest graphqlEndpoint
+        |> withCredentials
+        |> Graphql.Http.send GotResponse
 
 
 newPostMutation : Valid Title -> SelectionSet Response RootMutation
