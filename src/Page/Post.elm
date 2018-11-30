@@ -1,7 +1,5 @@
 module Page.Post exposing (Model, Msg, init, update, view)
 
---import Http
-
 import Api.Mutation
 import Api.Object
 import Api.Object.Post
@@ -14,23 +12,28 @@ import Graphql.SelectionSet exposing (SelectionSet(..), with)
 import Html exposing (Attribute, Html, button, div, input, span, text)
 import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
+import Http
 import Json.Decode
 import Keyboard
 import Keyboard.Events
 import Octicons
+import RemoteData exposing (RemoteData(..), WebData)
 import Utils
 import Validate exposing (Valid, Validator)
 
 
 type alias Model =
-    { posts : List Post
+    { posts : RemoteData (Graphql.Http.Error PostsResponse) (List Post)
+    , newPost : RemoteData (Graphql.Http.Error PostResponse) Post
+    , deletedPost : RemoteData (Graphql.Http.Error PostResponse) Post
     , newPostTitle : String
-    , submitting : Bool
     }
 
 
 type Msg
-    = GotResponse (Result (Error Response) Response)
+    = GotPostsResponse (RemoteData (Graphql.Http.Error PostsResponse) PostsResponse)
+    | GotNewPostRes (RemoteData (Graphql.Http.Error PostResponse) PostResponse)
+    | GotPostDeletedRes (RemoteData (Graphql.Http.Error PostResponse) PostResponse)
     | Fetch
     | NewPostTitleUpdated String
     | NewPost
@@ -54,16 +57,18 @@ type alias Post =
     { id : Id, title : Title, published : Published }
 
 
-type Response
-    = Posts (List Post)
-    | PostRes Post
-    | NewPostRes Post
-    | PostDeleted Post
+type alias PostsResponse =
+    { posts : List Post }
+
+
+type alias PostResponse =
+    { post : Post }
 
 
 titleString : Title -> String
 titleString (Title title) =
     title
+
 
 titleValidator : Validator String Title
 titleValidator =
@@ -82,17 +87,17 @@ titleIsValid title =
 
 initModel : Model
 initModel =
-    Model [] "" False
+    Model NotAsked NotAsked NotAsked ""
 
 
 initCmd : Cmd Msg
 initCmd =
-    sendQuery postsQuery
+    sendQuery GotPostsResponse postsQuery
 
 
 init : ( Model, Cmd Msg )
 init =
-    ( initModel, initCmd )
+    fetchPosts initModel
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,37 +112,49 @@ update msg model =
         NewPost ->
             case Validate.validate titleValidator <| Title model.newPostTitle of
                 Ok validTitle ->
-                    ( { model | submitting = True }
-                    , sendMutation (newPostMutation validTitle)
-                    )
+                    ( { model | newPost = Loading }, sendMutation GotNewPostRes (newPostMutation validTitle) )
 
                 Err errors ->
                     ( model, Cmd.none )
 
         DeletePost id ->
-            ( model
-            , sendMutation (deletePostMutation id)
-            )
+            ( { model | deletedPost = Loading }, sendMutation GotPostDeletedRes (deletePostMutation id) )
 
         Fetch ->
-            ( model, sendQuery postsQuery )
+            fetchPosts model
 
-        GotResponse res ->
-            case res of
-                Ok (Posts posts) ->
-                    ( { model | posts = posts }, Cmd.none )
+        GotPostsResponse remoteData ->
+            ( { model | posts = RemoteData.map .posts remoteData }, Cmd.none )
 
-                Ok (PostRes post) ->
-                    ( { model | posts = post :: model.posts }, Cmd.none )
+        GotNewPostRes remoteData ->
+            let
+                posts =
+                    case remoteData of
+                        Success { post } ->
+                            RemoteData.map (List.append [ post ]) model.posts
 
-                Ok (NewPostRes post) ->
-                    ( { model | submitting = False, posts = model.posts ++ [ post ], newPostTitle = "" }, Cmd.none )
+                        _ ->
+                            model.posts
+            in
+            ( { model
+                | newPostTitle = ""
+                , newPost = NotAsked
+                , posts = posts
+              }
+            , Cmd.none
+            )
 
-                Ok (PostDeleted { id }) ->
-                    ( { model | posts = List.filter ((/=) id << .id) model.posts }, Cmd.none )
+        GotPostDeletedRes remoteData ->
+            let
+                posts =
+                    case remoteData of
+                        Success { post } ->
+                            RemoteData.map (List.filter ((/=) post.id << .id)) model.posts
 
-                Err err ->
-                    ( { model | submitting = False }, Cmd.none )
+                        _ ->
+                            model.posts
+            in
+            ( { model | posts = posts, deletedPost = NotAsked }, Cmd.none )
 
 
 buttonClasses : String
@@ -168,29 +185,53 @@ viewPost post =
         ]
 
 
+buttonText : Model -> Html Msg
+buttonText model =
+    case ( model.deletedPost, model.newPost ) of
+        ( Loading, _ ) ->
+            text "Loading..."
+
+        ( _, Loading ) ->
+            text "Loading..."
+
+        ( _, _ ) ->
+            text "Submit"
+
+
 view : Model -> Html Msg
 view model =
     div [] <|
-        [ button [ onClick Fetch ] [ text "Click me!" ] ]
-            ++ List.map viewPost model.posts
-            ++ [ div [ class "flex justify-center" ]
-                    [ div []
-                        [ input
-                            [ onInput NewPostTitleUpdated
-                            , Keyboard.Events.onKeyDown [ ( Keyboard.Enter, Utils.ternary Noop NewPost model.submitting ) ]
-                            , value model.newPostTitle
-                            , class inputClasses
+        case model.posts of
+            Success posts ->
+                [ button [ onClick Fetch ] [ text "Click me!" ] ]
+                    ++ List.map viewPost posts
+                    ++ [ div [ class "flex justify-center" ]
+                            [ div []
+                                [ input
+                                    [ onInput NewPostTitleUpdated
+                                    , Keyboard.Events.onKeyDown [ ( Keyboard.Enter, Utils.ternary Noop NewPost (RemoteData.isLoading model.newPost) ) ]
+                                    , value model.newPostTitle
+                                    , class inputClasses
+                                    ]
+                                    []
+                                , button
+                                    [ onClick (Utils.ternary Noop NewPost (RemoteData.isLoading model.newPost))
+                                    , class (buttonClasses ++ "mt-6")
+                                    , classList [ ( disabledButtonClasses, Title model.newPostTitle |> titleIsValid |> not ) ]
+                                    ]
+                                    [ buttonText model ]
+                                ]
                             ]
-                            []
-                        , button
-                            [ onClick (Utils.ternary Noop NewPost model.submitting)
-                            , class (buttonClasses ++ "mt-6")
-                            , classList [ ( disabledButtonClasses, Title model.newPostTitle |> titleIsValid |> not ) ]
-                            ]
-                            [ text "Submit" ]
-                        ]
-                    ]
-               ]
+                       ]
+
+            NotAsked ->
+                [ text "Not asked..." ]
+
+            Loading ->
+                [ text "Loading..." ]
+
+            Failure _ ->
+                [ text "Error..." ]
 
 
 
@@ -202,30 +243,30 @@ graphqlEndpoint =
     "https://hello-prisma.now.sh"
 
 
-sendQuery : SelectionSet Response RootQuery -> Cmd Msg
-sendQuery query =
+fetchPosts : Model -> ( Model, Cmd Msg )
+fetchPosts model =
+    ( { model | posts = Loading }, sendQuery GotPostsResponse postsQuery )
+
+
+sendQuery : (RemoteData (Error a) a -> Msg) -> SelectionSet a RootQuery -> Cmd Msg
+sendQuery toMsg query =
     query
         |> Graphql.Http.queryRequest graphqlEndpoint
         |> withCredentials
-        |> Graphql.Http.send GotResponse
+        |> Graphql.Http.send (RemoteData.fromResult >> toMsg)
 
 
-
--- With remote data, it's as below
--- |> Graphql.Http.send (RemoteData.fromResult >> GotResponse)
-
-
-sendMutation : SelectionSet Response RootMutation -> Cmd Msg
-sendMutation mutation =
+sendMutation : (RemoteData (Error a) a -> Msg) -> SelectionSet a RootMutation -> Cmd Msg
+sendMutation toMsg mutation =
     mutation
         |> Graphql.Http.mutationRequest graphqlEndpoint
         |> withCredentials
-        |> Graphql.Http.send GotResponse
+        |> Graphql.Http.send (RemoteData.fromResult >> toMsg)
 
 
-newPostMutation : Valid Title -> SelectionSet Response RootMutation
+newPostMutation : Valid Title -> SelectionSet PostResponse RootMutation
 newPostMutation title =
-    Api.Mutation.selection NewPostRes
+    Api.Mutation.selection PostResponse
         |> with (Api.Mutation.createDraft (newPostArgs title) postSelection)
 
 
@@ -234,15 +275,15 @@ newPostArgs title =
     { title = titleString <| Validate.fromValid title, userId = Api.Scalar.Id "cjo7vfgvj4pdr0a017iv8k1sy" }
 
 
-deletePostMutation : Id -> SelectionSet Response RootMutation
+deletePostMutation : Id -> SelectionSet PostResponse RootMutation
 deletePostMutation (Id id) =
-    Api.Mutation.selection PostDeleted
+    Api.Mutation.selection PostResponse
         |> with (Api.Mutation.deletePost { id = Api.Scalar.Id id } postSelection)
 
 
-postsQuery : SelectionSet Response RootQuery
+postsQuery : SelectionSet PostsResponse RootQuery
 postsQuery =
-    Api.Query.selection Posts
+    Api.Query.selection PostsResponse
         |> with (Api.Query.posts postSelection)
 
 
