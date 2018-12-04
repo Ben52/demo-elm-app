@@ -5,35 +5,32 @@ import Api.Object
 import Api.Object.Post
 import Api.Query
 import Api.Scalar
-import Graphql.Field exposing (Field(..))
-import Graphql.Http exposing (Error, send, withCredentials)
+import Graphql.Http
 import Graphql.Operation exposing (RootMutation, RootQuery)
-import Graphql.SelectionSet exposing (SelectionSet(..), with)
+import Graphql.SelectionSet as SelectionSet exposing (SelectionSet)
 import Html exposing (Attribute, Html, button, div, input, span, text)
 import Html.Attributes exposing (class, classList, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
-import Http
-import Json.Decode
 import Keyboard
 import Keyboard.Events
 import Octicons
-import RemoteData exposing (RemoteData(..), WebData)
+import RemoteData exposing (RemoteData(..))
 import Utils
 import Validate exposing (Valid, Validator)
 
 
 type alias Model =
-    { posts : RemoteData (Graphql.Http.Error PostsResponse) (List Post)
-    , newPost : RemoteData (Graphql.Http.Error PostResponse) Post
-    , deletedPost : RemoteData (Graphql.Http.Error PostResponse) Post
+    { posts : RemoteData (Graphql.Http.Error ()) (List Post)
+    , newPost : RemoteData (Graphql.Http.Error ()) Post
+    , deletedPost : RemoteData (Graphql.Http.Error ()) Post
     , newPostTitle : String
     }
 
 
 type Msg
-    = GotPostsResponse (RemoteData (Graphql.Http.Error PostsResponse) PostsResponse)
-    | GotNewPostRes (RemoteData (Graphql.Http.Error PostResponse) PostResponse)
-    | GotPostDeletedRes (RemoteData (Graphql.Http.Error PostResponse) PostResponse)
+    = GotPostsResponse (RemoteData (Graphql.Http.Error ()) PostsResponse)
+    | GotNewPostRes (RemoteData (Graphql.Http.Error ()) PostResponse)
+    | GotPostDeletedRes (RemoteData (Graphql.Http.Error ()) PostResponse)
     | Fetch
     | NewPostTitleUpdated String
     | NewPost
@@ -127,34 +124,22 @@ update msg model =
             ( { model | posts = RemoteData.map .posts remoteData }, Cmd.none )
 
         GotNewPostRes remoteData ->
-            let
-                posts =
-                    case remoteData of
-                        Success { post } ->
-                            RemoteData.map (List.append [ post ]) model.posts
-
-                        _ ->
-                            model.posts
-            in
             ( { model
                 | newPostTitle = ""
                 , newPost = NotAsked
-                , posts = posts
+                , posts = RemoteData.map2 List.append model.posts (RemoteData.map (List.singleton << .post) remoteData)
               }
             , Cmd.none
             )
 
         GotPostDeletedRes remoteData ->
-            let
-                posts =
-                    case remoteData of
-                        Success { post } ->
-                            RemoteData.map (List.filter ((/=) post.id << .id)) model.posts
-
-                        _ ->
-                            model.posts
-            in
-            ( { model | posts = posts, deletedPost = NotAsked }, Cmd.none )
+            ( { model
+                | deletedPost = NotAsked
+                , posts =
+                    RemoteData.map2 List.filter (RemoteData.map ((/=) << .post) remoteData) model.posts
+              }
+            , Cmd.none
+            )
 
 
 buttonClasses : String
@@ -230,7 +215,7 @@ view model =
             Loading ->
                 [ text "Loading..." ]
 
-            Failure _ ->
+            Failure err ->
                 [ text "Error..." ]
 
 
@@ -248,26 +233,23 @@ fetchPosts model =
     ( { model | posts = Loading }, sendQuery GotPostsResponse postsQuery )
 
 
-sendQuery : (RemoteData (Error a) a -> Msg) -> SelectionSet a RootQuery -> Cmd Msg
+sendQuery : (RemoteData (Graphql.Http.Error ()) a -> Msg) -> SelectionSet a RootQuery -> Cmd Msg
 sendQuery toMsg query =
     query
         |> Graphql.Http.queryRequest graphqlEndpoint
-        |> withCredentials
-        |> Graphql.Http.send (RemoteData.fromResult >> toMsg)
+        |> Graphql.Http.send (Graphql.Http.discardParsedErrorData >> RemoteData.fromResult >> toMsg)
 
 
-sendMutation : (RemoteData (Error a) a -> Msg) -> SelectionSet a RootMutation -> Cmd Msg
+sendMutation : (RemoteData (Graphql.Http.Error ()) a -> Msg) -> SelectionSet a RootMutation -> Cmd Msg
 sendMutation toMsg mutation =
     mutation
         |> Graphql.Http.mutationRequest graphqlEndpoint
-        |> withCredentials
-        |> Graphql.Http.send (RemoteData.fromResult >> toMsg)
+        |> Graphql.Http.send (Graphql.Http.discardParsedErrorData >> RemoteData.fromResult >> toMsg)
 
 
 newPostMutation : Valid Title -> SelectionSet PostResponse RootMutation
 newPostMutation title =
-    Api.Mutation.selection PostResponse
-        |> with (Api.Mutation.createDraft (newPostArgs title) postSelection)
+    Api.Mutation.createDraft (newPostArgs title) (SelectionSet.map PostResponse postSelection)
 
 
 newPostArgs : Valid Title -> Api.Mutation.CreateDraftRequiredArguments
@@ -277,34 +259,17 @@ newPostArgs title =
 
 deletePostMutation : Id -> SelectionSet PostResponse RootMutation
 deletePostMutation (Id id) =
-    Api.Mutation.selection PostResponse
-        |> with (Api.Mutation.deletePost { id = Api.Scalar.Id id } postSelection)
+    Api.Mutation.deletePost { id = Api.Scalar.Id id } (SelectionSet.map PostResponse postSelection)
 
 
 postsQuery : SelectionSet PostsResponse RootQuery
 postsQuery =
-    Api.Query.selection PostsResponse
-        |> with (Api.Query.posts postSelection)
+    SelectionSet.map PostsResponse (Api.Query.posts postSelection)
 
 
 postSelection : SelectionSet Post Api.Object.Post
 postSelection =
-    Api.Object.Post.selection Post
-        |> with idField
-        |> with titleField
-        |> with publishedField
-
-
-idField : Field Id Api.Object.Post
-idField =
-    Api.Object.Post.id |> Graphql.Field.map (\(Api.Scalar.Id id) -> Id id)
-
-
-titleField : Field Title Api.Object.Post
-titleField =
-    Api.Object.Post.title |> Graphql.Field.map (Title << String.toUpper)
-
-
-publishedField : Field Published Api.Object.Post
-publishedField =
-    Api.Object.Post.published |> Graphql.Field.map Published
+    SelectionSet.map3 Post
+        (Api.Object.Post.id |> SelectionSet.map (\(Api.Scalar.Id id) -> Id id))
+        (Api.Object.Post.title |> SelectionSet.map (Title << String.toUpper))
+        (Api.Object.Post.published |> SelectionSet.map Published)
