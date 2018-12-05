@@ -28,9 +28,9 @@ type alias Model =
 
 
 type Msg
-    = GotPostsResponse (RemoteData (Graphql.Http.Error ()) PostsResponse)
-    | GotNewPostRes (RemoteData (Graphql.Http.Error ()) PostResponse)
-    | GotPostDeletedRes (RemoteData (Graphql.Http.Error ()) PostResponse)
+    = GotPostsResponse (RemoteData (Graphql.Http.Error ()) (List Post))
+    | GotNewPostRes (RemoteData (Graphql.Http.Error ()) Post)
+    | GotPostDeletedRes (RemoteData (Graphql.Http.Error ()) Post)
     | Fetch
     | NewPostTitleUpdated String
     | NewPost
@@ -52,14 +52,6 @@ type Published
 
 type alias Post =
     { id : Id, title : Title, published : Published }
-
-
-type alias PostsResponse =
-    { posts : List Post }
-
-
-type alias PostResponse =
-    { post : Post }
 
 
 titleString : Title -> String
@@ -121,13 +113,13 @@ update msg model =
             fetchPosts model
 
         GotPostsResponse remoteData ->
-            ( { model | posts = RemoteData.map .posts remoteData }, Cmd.none )
+            ( { model | posts = remoteData }, Cmd.none )
 
         GotNewPostRes remoteData ->
             ( { model
                 | newPostTitle = ""
                 , newPost = NotAsked
-                , posts = RemoteData.map2 List.append model.posts (RemoteData.map (List.singleton << .post) remoteData)
+                , posts = RemoteData.map2 List.append model.posts (RemoteData.map List.singleton remoteData)
               }
             , Cmd.none
             )
@@ -135,8 +127,7 @@ update msg model =
         GotPostDeletedRes remoteData ->
             ( { model
                 | deletedPost = NotAsked
-                , posts =
-                    RemoteData.map2 List.filter (RemoteData.map ((/=) << .post) remoteData) model.posts
+                , posts = RemoteData.map2 List.filter (RemoteData.map (/=) remoteData) model.posts
               }
             , Cmd.none
             )
@@ -247,9 +238,9 @@ sendMutation toMsg mutation =
         |> Graphql.Http.send (Graphql.Http.discardParsedErrorData >> RemoteData.fromResult >> toMsg)
 
 
-newPostMutation : Valid Title -> SelectionSet PostResponse RootMutation
+newPostMutation : Valid Title -> SelectionSet Post RootMutation
 newPostMutation title =
-    Api.Mutation.createDraft (newPostArgs title) (SelectionSet.map PostResponse postSelection)
+    Api.Mutation.createDraft (newPostArgs title) postSelection
 
 
 newPostArgs : Valid Title -> Api.Mutation.CreateDraftRequiredArguments
@@ -257,14 +248,14 @@ newPostArgs title =
     { title = titleString <| Validate.fromValid title, userId = Api.Scalar.Id "cjo7vfgvj4pdr0a017iv8k1sy" }
 
 
-deletePostMutation : Id -> SelectionSet PostResponse RootMutation
+deletePostMutation : Id -> SelectionSet Post RootMutation
 deletePostMutation (Id id) =
-    Api.Mutation.deletePost { id = Api.Scalar.Id id } (SelectionSet.map PostResponse postSelection)
+    Api.Mutation.deletePost { id = Api.Scalar.Id id } postSelection
 
 
-postsQuery : SelectionSet PostsResponse RootQuery
+postsQuery : SelectionSet (List Post) RootQuery
 postsQuery =
-    SelectionSet.map PostsResponse (Api.Query.posts postSelection)
+    Api.Query.posts postSelection
 
 
 postSelection : SelectionSet Post Api.Object.Post
