@@ -79,11 +79,6 @@ initModel =
     Model NotAsked NotAsked NotAsked ""
 
 
-initCmd : Cmd Msg
-initCmd =
-    sendQuery GotPostsResponse postsQuery
-
-
 init : ( Model, Cmd Msg )
 init =
     fetchPosts initModel

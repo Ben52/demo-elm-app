@@ -21,19 +21,19 @@ import Json.Decode as Decode
 {-| -}
 id : SelectionSet Api.Scalar.Id Api.Object.Post
 id =
-    Object.selectionForField "id" [] (Object.scalarDecoder |> Decode.map Api.Scalar.Id)
+    Object.selectionForField "Scalar.Id" "id" [] (Object.scalarDecoder |> Decode.map Api.Scalar.Id)
 
 
 {-| -}
 title : SelectionSet String Api.Object.Post
 title =
-    Object.selectionForField "title" [] Decode.string
+    Object.selectionForField "String" "title" [] Decode.string
 
 
 {-| -}
 published : SelectionSet Bool Api.Object.Post
 published =
-    Object.selectionForField "published" [] Decode.bool
+    Object.selectionForField "Bool" "published" [] Decode.bool
 
 
 {-| -}
